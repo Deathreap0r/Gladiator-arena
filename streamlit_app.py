@@ -1,66 +1,103 @@
+# 🔹 FORGE OF FLESH AND FIRE - STREAMLIT APP
 import streamlit as st
 import random
 
-# Gladiator Names & Titles
-NAMES = ["Raxus", "Velgrim", "Drakmar", "Thorn", "Mordak", "Ironjaw", "Vexis", "Karn", "Brutus", "Skorn"]
-TITLES = ["the Mauler", "of the Pit", "Doomfist", "the Cruel", "Warbeast", "the Untamed", "Bonecrusher", "Hellborn"]
+st.set_page_config(page_title="Forge of Flesh and Fire", layout="centered")
 
-def generate_name():
-    return f"{random.choice(NAMES)} {random.choice(TITLES)}"
+# --- Data Structures ---
+titles_by_level = {
+    1: "Initiate",
+    2: "Steelborn",
+    3: "Blooded",
+    4: "Prime",
+    5: "Ascended"
+}
 
+arena_conditions = [
+    "Warp Storm: Psychic surges disrupt all logic",
+    "Grav Flux: Movement impaired by shifting weight",
+    "Radiation Leak: Organic tissue weakens",
+    "No-Reflex Protocol: Counterattacks disabled",
+    "Spectator Bloodlust: Critical hits doubled"
+]
+
+classes = {
+    "Reaper": {"Strength": 8, "Agility": 6, "Endurance": 5},
+    "Scourge": {"Strength": 6, "Agility": 9, "Endurance": 4},
+    "Ironhowl": {"Strength": 7, "Agility": 4, "Endurance": 9},
+    "Apostle": {"Strength": 5, "Agility": 5, "Endurance": 7},
+    "Burned": {"Strength": 6, "Agility": 7, "Endurance": 6},
+}
+
+leaderboard = []
+
+# --- Helper Functions ---
 def create_gladiator():
-    stats = sorted(random.sample(range(1, 30), 2))
-    strength = stats[0]
-    agility = stats[1] - stats[0]
-    endurance = 30 - stats[1]
+    name_prefixes = ["GORE", "XARN", "HEX", "KARN", "NUL"]
+    name_suffixes = ["-77", "-RAGE", "-MKV", "-TERROR", "-X"]
+    name = random.choice(name_prefixes) + random.choice(name_suffixes)
+    class_name = random.choice(list(classes.keys()))
+    level = 1
+    xp = 0
     return {
-        "name": generate_name(),
-        "strength": strength,
-        "agility": agility,
-        "endurance": endurance
+        "name": name,
+        "class": class_name,
+        "level": level,
+        "xp": xp
     }
 
-def fight(g1, g2):
-    hp1 = g1['endurance']
-    hp2 = g2['endurance']
-    log = [f"⚔️ {g1['name']} VS {g2['name']}"]
+def fight(g1, g2, mutator):
+    g1_power = sum(classes[g1["class"]].values()) + g1["level"] + random.randint(0, 6)
+    g2_power = sum(classes[g2["class"]].values()) + g2["level"] + random.randint(0, 6)
 
-    while hp1 > 0 and hp2 > 0:
-        if random.random() < g1['strength'] / (g1['strength'] + g2['agility']):
-            dmg = max(1, g1['strength'] // 2)
-            hp2 -= dmg
-            log.append(f"{g1['name']} hits for {dmg} damage!")
-        else:
-            log.append(f"{g1['name']} misses!")
+    if "Critical" in mutator and random.random() < 0.2:
+        g1_power += 5
+    if "Critical" in mutator and random.random() < 0.2:
+        g2_power += 5
 
-        if hp2 <= 0:
-            break
+    if g1_power > g2_power:
+        return g1
+    else:
+        return g2
 
-        if random.random() < g2['strength'] / (g2['strength'] + g1['agility']):
-            dmg = max(1, g2['strength'] // 2)
-            hp1 -= dmg
-            log.append(f"{g2['name']} counters for {dmg} damage!")
-        else:
-            log.append(f"{g2['name']} misses!")
+def level_up(gladiator):
+    gladiator["xp"] += 1
+    if gladiator["xp"] >= gladiator["level"] and gladiator["level"] < 5:
+        gladiator["level"] += 1
+        gladiator["xp"] = 0
 
-    winner = g1['name'] if hp1 > 0 else g2['name']
-    log.append(f"🏆 {winner} is victorious!")
-    return "\n".join(log), g1, g2
+def get_title(gladiator):
+    return titles_by_level[gladiator["level"]]
 
-# --- Streamlit UI ---
-st.title("⚔️ Gladiator Evolution Arena")
+# --- UI Logic ---
+st.title("🔥 FORGE OF FLESH AND FIRE 🔥")
+st.markdown("A grimdark gladiator arena of biomechanical bloodsport. Tap 'Begin Tournament' to unleash the slaughter.")
 
-if st.button("Start Battle"):
+if st.button("Begin Tournament"):
+    condition = random.choice(arena_conditions)
+    st.subheader(f"Arena Condition: {condition}")
+
     g1 = create_gladiator()
     g2 = create_gladiator()
-    result, g1stats, g2stats = fight(g1, g2)
+    g3 = create_gladiator()
+    g4 = create_gladiator()
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader(g1stats['name'])
-        st.text(f"STR: {g1stats['strength']}\nAGI: {g1stats['agility']}\nEND: {g1stats['endurance']}")
-    with col2:
-        st.subheader(g2stats['name'])
-        st.text(f"STR: {g2stats['strength']}\nAGI: {g2stats['agility']}\nEND: {g2stats['endurance']}")
+    semifinal_1_winner = fight(g1, g2, condition)
+    semifinal_2_winner = fight(g3, g4, condition)
 
-    st.code(result)
+    final_winner = fight(semifinal_1_winner, semifinal_2_winner, condition)
+    level_up(final_winner)
+
+    title = get_title(final_winner)
+    st.success(f"🏆 Champion: {final_winner['name']} the {title} ({final_winner['class']})")
+
+    leaderboard.append(f"{final_winner['name']} the {title} [{final_winner['class']}]")
+
+if st.button("Show Ascended Ironbound Leaderboard"):
+    st.subheader("📜 The Ascended Ironbound")
+    if leaderboard:
+        for champ in leaderboard[::-1]:
+            st.markdown(f"- {champ}")
+    else:
+        st.info("No champions have ascended yet.")
+
